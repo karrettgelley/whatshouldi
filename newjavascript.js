@@ -1,12 +1,12 @@
 var queryItem;
 var location;
-var map;
+var map = null;
 var center;
 var place;
 var results = null;
 var i = 0;
-var status;
-var pagination;
+var pagination = null;
+var service = null;
 
 $( "[name='queryItem']" ).click(function() {
   queryItem = this.id;
@@ -14,7 +14,6 @@ $( "[name='queryItem']" ).click(function() {
 
 $( "[name='searchButton']" ).click(function() {
     if(queryItem == "eat"){
-        i = 0;
         getLocation();
     } else if(queryItem == "read"){
         getBook();
@@ -26,40 +25,30 @@ $( "[name='searchButton']" ).click(function() {
 });
 
 
-$("[name='nobutton']").click(function() {
-    if(queryItem == "eat"){
-        getLocation();
-    } else if(queryItem == "read"){
-        getBook();
-    } else if(queryItem == "do"){
-        
-    } else if(queryItem =="watch"){
-        
-    }    
-});
-
 function getLocation() {
     navigator.geolocation.getCurrentPosition
     (onLocationSuccess, onLocationError, { enableHighAccuracy: true });
 }
 
 var onLocationSuccess = function (position) {
-    Latitude = position.coords.latitude;
-    Longitude = position.coords.longitude;
-    getFood(Latitude, Longitude);
+    if(map == null) {
+        Latitude = position.coords.latitude;
+        Longitude = position.coords.longitude;
+        /* create location and create a service*/
+        center = new google.maps.LatLng(Latitude, Longitude);
+        map = new google.maps.Map(document.getElementById('map'), 
+        {center: center, zoom: 13});
+        service = new google.maps.places.PlacesService(map);    
+    }
+    getFood();
 }
 
 
-function getFood(Latitude, Longitude){
+function getFood(){
     $('#modalBody').html('');
     $('#modalTitle').html('');
 
-    /* create location and create a service*/
-    center = new google.maps.LatLng(Latitude, Longitude);
-    map = new google.maps.Map(document.getElementById('map'), 
-    {center: center, zoom: 13});
-    var service = new google.maps.places.PlacesService(map);
-    alert('i: ' + i);
+
 
     if(results == null || i == 5) {
         var request;
@@ -78,18 +67,15 @@ function getFood(Latitude, Longitude){
                 location: center,
                 radius: 10000,
                 type: ['restaurant'],
-                openNow: true,
                 pagetoken: next_page
             }       
         } 
-        i = 0;
-        service.nearbySearch(request, function (resultss, statuss, paginationn) {
+        service.nearbySearch(request, function (resultss, status, paginationn) {
            results = resultss;
-           status = statuss;
            pagination = paginationn;
            if (status == google.maps.places.PlacesServiceStatus.OK) {
             console.log(results);
-            var place = results[i];
+            var place = results[0];
             var appendedString = '';
             //get place details
             request = {
@@ -106,7 +92,9 @@ function getFood(Latitude, Longitude){
                     //display results in modal body
                     $('#modalTitle').html(place.name);
                     $('#searchResultDisplay').modal('show');
-                    i++;
+                    i = 1;
+                } else {
+                    alert('badd to tha bone');
                 }
             });
 
@@ -123,16 +111,13 @@ function getFood(Latitude, Longitude){
       var request = {
           placeId: place.place_id
       };
-      service.getDetails(request, function (placeDetails, statuss) {
-          status = statuss;
+      service.getDetails(request, function (placeDetails, status) {
           if (status == google.maps.places.PlacesServiceStatus.OK) {
-
               //markup to display place details
               appendedString += '<div>Address: ' + placeDetails.formatted_address + '</div>'; //address
               appendedString += '<div><a href="' + placeDetails.url + '">Reviews, directions, and more</a><div>';
               appendedString += '<div><a href="' + placeDetails.website + '">Company Website</a></div>';
               $('#modalBody').append(appendedString);
-              //display results in modal body
               $('#modalTitle').html(place.name);
               $('#searchResultDisplay').modal('show');
               i++;
